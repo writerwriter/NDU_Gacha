@@ -8,7 +8,7 @@ const app = new PIXI.Application({
 });
 document.body.appendChild(app.view);
 
-const loader = app.loader;
+var loader = app.loader;
 
 const resources_start = [
     "./src/img/gacha_single.png",
@@ -50,6 +50,10 @@ loader
 .add(resources_ten)
 .add(resources_target)
 .load(start);
+
+app.ticker_gameLoop = function(delta){
+    state(delta);
+}
 
 let scene_start, scene_gacha_single, scene_gacha_ten;
 
@@ -262,7 +266,8 @@ function shells_generation(gacha_rewards=[]){
 
 function onGachaBtnClick(event){
     scene_start.visible = false;
-    app.ticker.add(delta => gameLoop(delta));
+    app.ticker.remove(app.ticker_gameLoop, app);
+    app.ticker.add(app.ticker_gameLoop, app);
     switch(event.target.gacha_num){
         case 1: 
             loader.load(scene_1); 
@@ -324,10 +329,6 @@ function onDragMove_chargingHandle(){
             this.x = 230;
         }
     }
-}
-
-function gameLoop(delta){
-    state(delta);
 }
 
 function play_single(delta){
@@ -407,13 +408,24 @@ function gacha(delta){
         }
     }
     if(gacha_global_time > 300){
-        loader.reset(start);
-        loader.reset(scene_1);
-        loader.reset(scene_10);
         if(scene_gacha_single) scene_gacha_single.visible = false;
         if(scene_gacha_ten) scene_gacha_ten.visible = false;
-        scene_start.visible = true;
         state = ()=>{};
+        scene_start = null;
+        scene_gacha_single = null;
+        scene_gacha_ten = null;
+
+        chargning_handle = null, bolt = null, bolt_open_time = 0;
+        bullet = null;
+        mag = null;
+        mag_hitbox = null;
+        mag_insert_hitbox = null;
+        shells = null;
+        bolt_hitbox = null;
+        trigger_hitbox=null;
+        bullet_load_count = 0, gacha_global_time = 0, gacha_result = [0, 1, 2, 2, 1, 2, 0 ,0 ,1 ,2];
+        muzzle_flush = null, muzzle_flush_open_time = 0;
+        loader.load(start);
     }
 }
 
