@@ -20,12 +20,14 @@ const resources_charging = [
     "./src/img/bolt.svg",
 ]
 
-const resources_single = ["./src/img/rifle_no_bolt.svg", 
-"./src/img/full_rifle.svg", 
-"./src/img/bullet_gold.svg",
-"./src/img/bullet_silver.svg",
-"./src/img/bullet_rainbow.svg",
-"./src/img/bullet.svg",
+const resources_single = [
+    "./src/img/rifle_no_bolt.svg", 
+    "./src/img/full_rifle.svg", 
+    "./src/img/bullet_gold.svg",
+    "./src/img/bullet_silver.svg",
+    "./src/img/bullet_rainbow.svg",
+    "./src/img/bullet.svg",
+    "./src/img/muzzle_flush.svg"
 ]
 
 const resources_ten = ["./src/img/rifle_no_mag.svg",
@@ -35,6 +37,11 @@ const resources_ten = ["./src/img/rifle_no_mag.svg",
 const resources_target = [
     "./src/img/target.jpg"
 ]
+
+const sound_effects = {
+    "single_round_loading": PIXI.sound.Sound.from("./src/sound/single round loading.mp3"),
+    "firing": PIXI.sound.Sound.from("./src/sound/firing.mp3"),
+}
 
 loader
 .add(resources_start)
@@ -46,8 +53,9 @@ loader
 
 let scene_start, scene_gacha_single, scene_gacha_ten;
 
-let chargning_handle, bolt;
+let chargning_handle, bolt, bolt_open_time = 0;
 let bullet, mag, mag_hitbox, mag_insert_hitbox, shells, bolt_hitbox, trigger_hitbox, state, bullet_load_count = 0, gacha_global_time = 0, gacha_result = [0, 1, 2, 2, 1, 2, 0 ,0 ,1 ,2];
+let muzzle_flush, muzzle_flush_open_time = 0;
 
 function start() {
     /*scene_start*/
@@ -103,6 +111,13 @@ function scene_1(){
     // close (315, 135)
     //bolt.x = 315;
 
+    // loading muzzle flush
+    muzzle_flush = new PIXI.Sprite(loader.resources['./src/img/muzzle_flush.svg'].texture);
+    muzzle_flush.scale.set(0.3, 0.3);
+    muzzle_flush.x = 740;
+    muzzle_flush.y = 40;
+    muzzle_flush.visible = false;
+
     /*charging handle and bolt*/
     
     /*scene_gacha_single*/
@@ -148,6 +163,7 @@ function scene_1(){
     scene_gacha_single.addChild(bolt);
     scene_gacha_single.addChild(rifle_no_bolt);
     scene_gacha_single.addChild(bullet);
+    scene_gacha_single.addChild(muzzle_flush);
     scene_gacha_single.visible = false;
 
     app.stage.addChild(scene_gacha_single);
@@ -321,6 +337,8 @@ function play_single(delta){
             bullet.visible = false;
             bullet.load = true;
             bullet_load_count++;
+            // add sound
+            sound_effects["single_round_loading"].play();
         }
     }
     // charging handle start
@@ -348,9 +366,37 @@ function play_ten(delta){
 
 function gacha(delta){
     gacha_global_time++;
+
+    // handle bolt
+    if(bolt_open_time > 2){
+        bolt.x = 315; // close
+    }else{
+        bolt_open_time++;
+    }
+
+    // handle muzzle_flush
+    if(muzzle_flush_open_time > 2){
+        muzzle_flush.visible = false;
+    }else{
+        muzzle_flush_open_time++;
+    }
+
+
     for(var i = 0; i < shells.length; i++){
         if(gacha_global_time > 20 * i){
+            if(!shells[i].visible){ // new round fired
+                sound_effects["firing"].play();
+
+                // make bolt open
+                bolt.x = 230;
+                bolt_open_time = 0;
+
+                // make muzzle_flush flush
+                muzzle_flush.visible = true;
+                muzzle_flush_open_time = 0;
+            }
             shells[i].visible = true;
+
             switch(gacha_result[i]){
                 case 0: shells[i].x -= 30; break;
                 case 1: shells[i].x -= 20; break;
