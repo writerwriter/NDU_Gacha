@@ -348,21 +348,20 @@ function scene_10(){
     mag_insert_hitbox.alpha = 0;
     game.scenes.gacha_ten.mag_insert_hitbox = mag_insert_hitbox;
 
+    mag_guide_hitboxes_size = [[300, 300], [100, 300], [300, 300]];
     mag_guide_hitboxes_pos = [[75, -10], [500, -40], [200, -100]];
     mag_guide_hitboxes = [];
     for(i=0; i<mag_guide_hitboxes_pos.length; ++i){
         gh = new PIXI.Graphics();
         gh.beginFill(0x000000);
-        gh.drawRect(0,0,300,300);
+        gh.drawRect(0,0,mag_guide_hitboxes_size[i][0],mag_guide_hitboxes_size[i][1]);
         gh.endFill();
         gh.x = mag_guide_hitboxes_pos[i][0];
         gh.y = mag_guide_hitboxes_pos[i][1];
         gh.alpha = 0;
         mag_guide_hitboxes.push(gh);
     }
-
     game.scenes.gacha_ten.mag_guide_hitboxes = mag_guide_hitboxes;
-    console.log(game.scenes.gacha_ten.mag_guide_hitboxes);
 
     trigger_hitbox = new PIXI.Graphics();
     trigger_hitbox.beginFill(0x000000);
@@ -391,17 +390,26 @@ function scene_10(){
 }
 
 function shells_generation(gacha_rewards=[]){
-    var shell;
     for(var i = 0; i < gacha_rewards.length; i++){
+        var shell;
         switch(gacha_rewards[i]){
-            case 0: shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_gold.svg'].texture); break;
-            case 1: shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_silver.svg'].texture); break;
-            case 2: shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_rainbow.svg'].texture); break;
+            case 0:
+                shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_gold.svg'].texture);
+                break;
+            case 1:
+                shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_silver.svg'].texture);
+                break;
+            case 2:
+                shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_rainbow.svg'].texture);
+                break;
         }
         shell.scale.set(0.05, 0.05);
         shell.anchor.set(0.5);
         shell.x = 412.5;
         shell.y = 187.5;
+
+        shell.goal_x = 100 + 60 * i;
+        shell.goal_y = 500;
         shell.visible = false;
         app.stage.addChild(shell);
         game.shells_push(shell);
@@ -585,6 +593,12 @@ function gacha(delta){
                 game.shells[i].visible = true;
                 game.shell_velocity[i] = [-8, -5];
 
+                v0 = game.shell_velocity[i][1];
+                y_distance = game.shells[i].goal_y - game.shells[i].y;
+                total_time = ((-4.0 * v0) + Math.pow((4.0 * v0 * v0 + 8.0 * gravitational_acceleration * y_distance), 0.5)) / (2.0 * gravitational_acceleration); // t = ( -4v0 + (4v0^2 + 8gs)^0.5 ) / 2g
+
+                game.shell_velocity[i][0] = (game.shells[i].goal_x - game.shells[i].x) / total_time;
+
                 sound_effects["firing"].play();
 
                 // make bolt open
@@ -598,18 +612,30 @@ function gacha(delta){
                 if(i == game.shells.length - 1)
                     bolt.force_open = true;
             }
-            
-            // update the location of shells
-            game.shells[i].x += game.shell_velocity[i][0];
-            game.shells[i].y += game.shell_velocity[i][1];
 
-            // gravity
-            game.shell_velocity[i][1] += gravitational_acceleration;
+            if(gacha_global_time > 20 * i + total_time - 4){
+                game.shells[i].x = game.shells[i].goal_x;
+                game.shells[i].y = game.shells[i].goal_y;
 
-            game.shells[i].rotation -= 0.1;
+                game.shells[i].rotation -= 0.3 * Math.max(((20 * (i+1) + total_time + 10) - gacha_global_time) / 20, 0); // slowly stop turning
+            }
+            else{
+                // update the location of shells
+                game.shells[i].x += game.shell_velocity[i][0];
+                game.shells[i].y += game.shell_velocity[i][1];
+
+                // gravity
+                game.shell_velocity[i][1] += gravitational_acceleration;
+
+                game.shells[i].rotation -= 0.15;
+            }
         }
     }
-    if(gacha_global_time > 300){
+    if(gacha_global_time > 500){
+        for(i=0; i<game.shells.length; i++){
+            game.shells[i].visible = false;
+        }
+
         if(game.scenes.gacha_single.handle) game.scenes.gacha_single.handle.visible = false;
         if(game.scenes.gacha_ten.handle) game.scenes.gacha_ten.handle.visible = false;
         state = ()=>{};
@@ -619,7 +645,7 @@ function gacha(delta){
         gacha_global_time = 0;
         gacha_result = [0, 1, 2, 2, 1, 2, 0 ,0 ,1 ,2];
         muzzle_flush.open_time = 0;
-        game.loader.load(start);
+        game.loader.load(start);        
     }
 }
 
