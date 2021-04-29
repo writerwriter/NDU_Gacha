@@ -42,6 +42,8 @@ const resources_target = [
 const sound_effects = {
     "single_round_loading": PIXI.sound.Sound.from("./src/sound/single round loading.mp3"),
     "firing": PIXI.sound.Sound.from("./src/sound/firing.mp3"),
+    "python": PIXI.sound.Sound.from("./src/sound/python_sound.mp3"),
+    "bolt_forward": PIXI.sound.Sound.from("./src/sound/bolt_forward.mp3"),
 }
 
 loader
@@ -80,6 +82,7 @@ function start() {
     gacha_single_btn.y = window.innerHeight/2 - 100;
     gacha_single_btn.gacha_num = 1;
     gacha_single_btn.on('pointerdown', onGachaBtnClick);
+
     let gacha_ten_btn = new PIXI.Sprite(loader.resources['./src/img/gacha_ten.png'].texture);
     gacha_ten_btn.interactive = true;
     gacha_ten_btn.buttonMode = true;
@@ -87,6 +90,8 @@ function start() {
     gacha_ten_btn.y = window.innerHeight/2 - 100;
     gacha_ten_btn.gacha_num = 10;
     gacha_ten_btn.on('pointerdown', onGachaBtnClick);
+    gacha_ten_btn.mouseover = gacha_single_btn.mouseover = function(){ sound_effects["python"].play(); };
+    gacha_ten_btn.mouseout = gacha_single_btn.mouseout = function(){ sound_effects["python"].stop(); };
 
     scene_start.addChild(gacha_popup);
     scene_start.addChild(gacha_single_btn);
@@ -268,6 +273,7 @@ function shells_generation(gacha_rewards=[]){
 }
 
 function onGachaBtnClick(event){
+    sound_effects["python"].stop();
     scene_start.visible = false;
     app.ticker.remove(app.ticker_gameLoop, app);
     app.ticker.add(app.ticker_gameLoop, app);
@@ -308,6 +314,7 @@ function onDragMove(){
 function onDragEnd_chargingHandle(){
     this.dragging = false;
     if(this.x < 155){
+        sound_effects["bolt_forward"].play();
         bolt.x = 315;
         bullet.visible = false;
         chargning_handle.interactive = false;
