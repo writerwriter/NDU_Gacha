@@ -177,9 +177,10 @@ function start() {
     gacha_ten_btn.y = window.innerHeight/2 - 100;
     gacha_ten_btn.gacha_num = 10;
     gacha_ten_btn.on('pointerdown', onGachaBtnClick);
+    game.scenes.start.gacha_ten_btn = gacha_ten_btn;
 
-    game.scenes.start.gacha_ten_btn.mouseover = gacha_single_btn.mouseover = function(){ sound_effects["python"].play(); };
-    game.scenes.start.gacha_ten_btn.mouseout = gacha_single_btn.mouseout = function(){ sound_effects["python"].stop(); };
+    game.scenes.start.gacha_ten_btn.mouseover = game.scenes.start.gacha_single_btn.mouseover = function(){ sound_effects["python"].play(); };
+    game.scenes.start.gacha_ten_btn.mouseout = game.scenes.start.gacha_single_btn.mouseout = function(){ sound_effects["python"].stop(); };
 
     game.scenes.start.handle.addChild(game.scenes.start.gacha_popup);
     game.scenes.start.handle.addChild(game.scenes.start.gacha_single_btn);
@@ -453,6 +454,7 @@ function onDragEnd_chargingHandle(){
             game.scenes.gacha_ten.trigger_hitbox.on('pointerdown', onTriggerClick);
         }
     this.x = 230;
+    }
 }
 
 function onDragMove_chargingHandle(){
