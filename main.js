@@ -301,6 +301,7 @@ function onDragEnd_chargingHandle(){
     this.dragging = false;
     if(this.x < 155){
         bolt.x = 315;
+        bullet.visible = false;
         chargning_handle.interactive = false;
         chargning_handle.buttonMode = false;
         trigger_hitbox.interactive = true;
@@ -332,8 +333,17 @@ function play_single(delta){
     // load bullets
     if(!bullet.load && hitTestRectangle(bullet, bolt_hitbox)){
         if(bullet.dragging == false){
-            bullet.visible = false;
+            bullet.visible = true;
             bullet.load = true;
+            bullet.interactive = false;
+            bullet.x = 420;
+            bullet.y = 205;
+            bullet.rotation = 0.3;
+
+            parent = bullet.parent;
+            bullet_index = parent.children.findIndex(element => element == bullet);
+            parent.children[bullet_index] = [parent.children[bullet_index-1], parent.children[bullet_index-1] = parent.children[bullet_index]][0]; // swap
+
             bullet_load_count++;
             // add sound
             sound_effects["single_round_loading"].play();
