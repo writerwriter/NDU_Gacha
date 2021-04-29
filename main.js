@@ -6,6 +6,7 @@ const app = new PIXI.Application({
     transparent: false,
     backgroundColor: 0xffffff,
 });
+const b = new Bump(PIXI);
 document.body.appendChild(app.view);
 
 class Game {
@@ -78,6 +79,8 @@ class Game {
         this.scenes.gacha_ten.mag_insert_hitbox = null;
         this.scenes.gacha_ten.trigger_hitbox = null;
 
+        this.scenes.gacha_ten.mag_guide_hitboxes = [];
+
         this.shells = [];
 
         this.state = 'start';
@@ -130,6 +133,7 @@ const sound_effects = {
     "firing": PIXI.sound.Sound.from("./src/sound/firing.mp3"),
     "python": PIXI.sound.Sound.from("./src/sound/python_sound.mp3"),
     "bolt_forward": PIXI.sound.Sound.from("./src/sound/bolt_forward.mp3"),
+    "put_meg_in": PIXI.sound.Sound.from("./src/sound/put_meg_in.mp3"),
 }
 
 game.loader
@@ -145,9 +149,9 @@ app.ticker_gameLoop = function(delta){
 }
 
 let bolt_open_time = 0;
-let state, gacha_global_time = 0, gacha_result = [0, 1, 2, 2, 1, 2, 0 ,0 ,1 ,2];
-let muzzle_flush_open_time = 0;
-let gravitational_acceleration = 0.9;
+let state, gacha_global_time = 0, gacha_result = [0, 1, 2, 2, 1, 2, 0 ,0 ,1 ,2]; // TODO: post gpu4.miplab.org:8999
+let muzzle_flush_open_time = 0;         // TODO: move this in the object
+let gravitational_acceleration = 0.9;   // TODO: turn this into constant
 
 function start() {
     /*scene_start*/
@@ -160,6 +164,7 @@ function start() {
     gacha_popup.y = window.innerHeight/2 - 250;
     game.scenes.start.gacha_popup = gacha_popup;
 
+    // TODO: change layout
     let gacha_single_btn = new PIXI.Sprite(game.loader.resources['./src/img/gacha_single.png'].texture);
     gacha_single_btn.interactive = true;
     gacha_single_btn.buttonMode = true;
@@ -167,10 +172,9 @@ function start() {
     gacha_single_btn.y = window.innerHeight/2 - 100;
     gacha_single_btn.gacha_num = 1;
     gacha_single_btn.on('pointerdown', onGachaBtnClick);
-
     game.scenes.start.gacha_single_btn = gacha_single_btn;
-    let gacha_ten_btn = new PIXI.Sprite(game.loader.resources['./src/img/gacha_ten.png'].texture);
 
+    let gacha_ten_btn = new PIXI.Sprite(game.loader.resources['./src/img/gacha_ten.png'].texture);
     gacha_ten_btn.interactive = true;
     gacha_ten_btn.buttonMode = true;
     gacha_ten_btn.x = window.innerWidth/2 + 200;
@@ -345,6 +349,22 @@ function scene_10(){
     mag_insert_hitbox.alpha = 0;
     game.scenes.gacha_ten.mag_insert_hitbox = mag_insert_hitbox;
 
+    mag_guide_hitboxes_pos = [[75, -10], [500, -40], [200, -100]];
+    mag_guide_hitboxes = [];
+    for(i=0; i<mag_guide_hitboxes_pos.length; ++i){
+        gh = new PIXI.Graphics();
+        gh.beginFill(0x000000);
+        gh.drawRect(0,0,300,300);
+        gh.endFill();
+        gh.x = mag_guide_hitboxes_pos[i][0];
+        gh.y = mag_guide_hitboxes_pos[i][1];
+        gh.alpha = 0;
+        mag_guide_hitboxes.push(gh);
+    }
+
+    game.scenes.gacha_ten.mag_guide_hitboxes = mag_guide_hitboxes;
+    console.log(game.scenes.gacha_ten.mag_guide_hitboxes);
+
     trigger_hitbox = new PIXI.Graphics();
     trigger_hitbox.beginFill(0x000000);
     trigger_hitbox.drawRect(0, 0, 65, 30);
@@ -357,11 +377,14 @@ function scene_10(){
     game.scenes.gacha_ten.handle.addChild(game.scenes.gacha_ten.rifle_no_mag_with_bolt);
     game.scenes.gacha_ten.handle.addChild(game.scenes.gacha_ten.mag);
     game.scenes.gacha_ten.handle.addChild(game.scenes.gacha_ten.charging_handle);
+    game.scenes.gacha_ten.handle.addChild(game.scenes.gacha_ten.bolt);
     game.scenes.gacha_ten.handle.addChild(game.scenes.gacha_ten.rifle_no_mag);
     game.scenes.gacha_ten.handle.addChild(game.scenes.gacha_ten.trigger_hitbox);
     game.scenes.gacha_ten.handle.addChild(game.scenes.gacha_ten.mag_insert_hitbox);
-    game.scenes.gacha_ten.handle.addChild(game.scenes.gacha_ten.bolt);
     game.scenes.gacha_ten.handle.addChild(game.scenes.gacha_ten.muzzle_flush);
+    for(i=0; i<game.scenes.gacha_ten.mag_guide_hitboxes.length; ++i)
+        game.scenes.gacha_ten.handle.addChild(game.scenes.gacha_ten.mag_guide_hitboxes[i]);
+
     game.scenes.gacha_ten.handle.visible = false;
 
     app.stage.addChild(game.scenes.gacha_ten.handle);
@@ -497,12 +520,30 @@ function play_single(delta){
 }
 
 function play_ten(delta){
-    if(!game.scenes.gacha_ten.mag.load && hitTestRectangle(game.scenes.gacha_ten.mag, game.scenes.gacha_ten.mag_insert_hitbox)){
-        if(game.scenes.gacha_ten.mag.dragging == false){
-            game.scenes.gacha_ten.mag.load = true;
-            game.scenes.gacha_ten.mag.x = 440;
-            game.scenes.gacha_ten.mag.y = 290;
+    for(i=0; i<game.scenes.gacha_ten.mag_guide_hitboxes.length; ++i){
+        let collision = b.rectangleCollision(game.scenes.gacha_ten.mag, game.scenes.gacha_ten.mag_guide_hitboxes[i]);
+        switch(collision){
+            case "up":
+                game.scenes.gacha_ten.mag.y--;
+                break;
+            case "down":
+                game.scenes.gacha_ten.mag.y++;
+                break;
+            case "left":
+                game.scenes.gacha_ten.mag.x++;
+                break;
+            case "right":
+                game.scenes.gacha_ten.mag.x--;
+                break;
         }
+    }
+    
+
+    if(!game.scenes.gacha_ten.mag.load && b.hitTestRectangle(game.scenes.gacha_ten.mag, game.scenes.gacha_ten.mag_insert_hitbox)){
+        sound_effects["put_meg_in"].play();
+        game.scenes.gacha_ten.mag.load = true;
+        game.scenes.gacha_ten.mag.x = 440;
+        game.scenes.gacha_ten.mag.y = 290;
     }
     if(game.scenes.gacha_ten.mag.load && !game.scenes.gacha_ten.charging_handle.load){
         game.scenes.gacha_ten.mag.interactive = false;
@@ -538,6 +579,7 @@ function gacha(delta){
         muzzle_flush_open_time++;
     }
 
+    // TODO: turn 2434
     for(var i = 0; i < game.shells.length; i++){
         if(gacha_global_time > 20 * i){
             if(!game.shells[i].visible){ // new round fired
