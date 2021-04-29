@@ -342,7 +342,7 @@ function play_single(delta){
 
             parent = bullet.parent;
             bullet_index = parent.children.findIndex(element => element == bullet);
-            parent.children[bullet_index] = [parent.children[bullet_index-1], parent.children[bullet_index-1] = parent.children[bullet_index]][0]; // swap
+            [parent.children[bullet_index-1], parent.children[bullet_index]] = [parent.children[bullet_index], parent.children[bullet_index-1]]; // swap
 
             bullet_load_count++;
             // add sound
