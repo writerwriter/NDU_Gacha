@@ -29,7 +29,8 @@ const resources_single = ["./src/img/rifle_no_bolt.svg",
 ]
 
 const resources_ten = ["./src/img/rifle_no_mag.svg",
-"./src/img/mag.svg"]
+"./src/img/mag.svg",
+"./src/img/rifle_no_mag_with_bolt.svg"]
 
 const resources_target = [
     "./src/img/target.jpg"
@@ -79,7 +80,9 @@ function start() {
 
     app.stage.addChild(scene_start);
     /*scene_start*/
+}
 
+function scene_1(){
     /*charging handle and bolt*/
     chargning_handle = new PIXI.Sprite(loader.resources['./src/img/charging_handle.svg'].texture);
     chargning_handle.scale.set(0.1, 0.1);
@@ -136,6 +139,7 @@ function start() {
     trigger_hitbox.endFill();
     trigger_hitbox.x = 318.5;
     trigger_hitbox.y = 247.5;
+    trigger_hitbox.alpha = 0;
 
     scene_gacha_single.addChild(rifle);
     scene_gacha_single.addChild(bolt_hitbox);
@@ -148,6 +152,30 @@ function start() {
 
     app.stage.addChild(scene_gacha_single);
     /*scene_gacha_single*/
+}
+
+function scene_10(){
+    /*charging handle and bolt*/
+    chargning_handle = new PIXI.Sprite(loader.resources['./src/img/charging_handle.svg'].texture);
+    chargning_handle.scale.set(0.1, 0.1);
+    chargning_handle.x = 230;
+    chargning_handle.y = 120;
+    chargning_handle.interactive = false;
+    chargning_handle.buttonMode = false;
+    chargning_handle
+        .on('pointerdown', onDragStart)
+        .on('pointerup', onDragEnd_chargingHandle)
+        .on('pointerupoutside', onDragEnd_chargingHandle)
+        .on('pointermove', onDragMove_chargingHandle)
+
+    bolt = new PIXI.Sprite(loader.resources['./src/img/bolt.svg'].texture);
+    bolt.scale.set(0.1, 0.1);
+    bolt.x = 230;
+    bolt.y = 135;
+    // close (315, 135)
+    //bolt.x = 315;
+
+    /*charging handle and bolt*/
     /*scene_gacha_ten*/
     scene_gacha_ten = new PIXI.Container();
     let rifle_no_mag = new PIXI.Sprite(loader.resources['./src/img/rifle_no_mag.svg'].texture);
@@ -174,17 +202,26 @@ function start() {
     mag_insert_hitbox.y = 180;
     mag_insert_hitbox.alpha = 0;
 
+    trigger_hitbox = new PIXI.Graphics();
+    trigger_hitbox.beginFill(0x000000);
+    trigger_hitbox.drawRect(0, 0, 65, 30);
+    trigger_hitbox.endFill();
+    trigger_hitbox.x = 318.5;
+    trigger_hitbox.y = 247.5;
+    trigger_hitbox.alpha = 0;
+
     scene_gacha_ten.addChild(mag);
+    scene_gacha_ten.addChild(chargning_handle);
     scene_gacha_ten.addChild(rifle_no_mag);
-    scene_gacha_ten.addChild(mag_insert_hitbox);
     scene_gacha_ten.addChild(trigger_hitbox);
+    scene_gacha_ten.addChild(mag_insert_hitbox);
+    scene_gacha_ten.addChild(bolt);
     scene_gacha_ten.visible = false;
 
     app.stage.addChild(scene_gacha_ten);
     /*scene_gacha_ten*/
-
 }
- 
+
 function shells_generation(gacha_rewards=[]){
     shells = [];
     var shell;
@@ -208,8 +245,16 @@ function onGachaBtnClick(event){
     scene_start.visible = false;
     app.ticker.add(delta => gameLoop(delta));
     switch(event.target.gacha_num){
-        case 1: scene_gacha_single.visible = true; state = play_single; break;
-        case 10: scene_gacha_ten.visible = true; state = play_ten; break;
+        case 1: 
+            loader.load(scene_1); 
+            scene_gacha_single.visible = true; 
+            state = play_single; 
+            break;
+        case 10: 
+            loader.load(scene_10); 
+            scene_gacha_ten.visible = true; 
+            state = play_ten; 
+            break;
     }
 }
 
@@ -237,7 +282,8 @@ function onDragEnd_chargingHandle(){
     this.dragging = false;
     if(this.x < 155){
         bolt.x = 315;
-        trigger_hitbox.alpha = 1;
+        chargning_handle.interactive = false;
+        chargning_handle.buttonMode = false;
         trigger_hitbox.interactive = true;
         trigger_hitbox.buttonMode = true;
         trigger_hitbox.on('pointerdown', onTriggerClick);
@@ -274,7 +320,6 @@ function play_single(delta){
     }
     // trigger start
     if(bullet_load_count == 1){
-        trigger_hitbox.alpha = 1;
         chargning_handle.interactive = true;
         chargning_handle.buttonMode = true;
     }
@@ -290,9 +335,10 @@ function play_ten(delta){
         }
     }
     if(mag.load){
-        trigger_hitbox.interactive = true;
-        trigger_hitbox.buttonMode = true;
-        trigger_hitbox.on('pointerdown', onTriggerClick);
+        mag.interactive = false;
+        mag.buttonMode = false;
+        chargning_handle.interactive = true;
+        chargning_handle.buttonMode = true;
     }
 }
 
@@ -363,6 +409,7 @@ function hitTestRectangle(r1, r2) {
 }
 
 function onTriggerClick(event){
+    console.log('test');
     shells_generation(gacha_result);
     trigger_hitbox.visible = false;
     state = gacha;
