@@ -31,8 +31,9 @@ const resources_single = [
 ]
 
 const resources_ten = ["./src/img/rifle_no_mag.svg",
-"./src/img/mag.svg",
-"./src/img/rifle_no_mag_with_bolt.svg"]
+    "./src/img/mag.svg",
+    "./src/img/rifle_no_mag_with_bolt.svg"
+]
 
 const resources_target = [
     "./src/img/target.jpg"
@@ -60,6 +61,7 @@ let scene_start, scene_gacha_single, scene_gacha_ten;
 let chargning_handle, bolt, bolt_open_time = 0;
 let bullet, mag, mag_hitbox, mag_insert_hitbox, shells, bolt_hitbox, trigger_hitbox, state, bullet_load_count = 0, gacha_global_time = 0, gacha_result = [0, 1, 2, 2, 1, 2, 0 ,0 ,1 ,2];
 let muzzle_flush, muzzle_flush_open_time = 0;
+let shell_velocity = [], gravitational_acceleration = 0.9;
 
 function start() {
     /*scene_start*/
@@ -261,6 +263,7 @@ function shells_generation(gacha_rewards=[]){
         shell.visible = false;
         app.stage.addChild(shell);
         shells.push(shell);
+        shell_velocity.push([0, 0]);
     }
 }
 
@@ -306,6 +309,7 @@ function onDragEnd_chargingHandle(){
     this.dragging = false;
     if(this.x < 155){
         bolt.x = 315;
+        bullet.visible = false;
         chargning_handle.interactive = false;
         chargning_handle.buttonMode = false;
         chargning_handle.load = true;
@@ -335,8 +339,17 @@ function play_single(delta){
     // load bullets
     if(!bullet.load && hitTestRectangle(bullet, bolt_hitbox)){
         if(bullet.dragging == false){
-            bullet.visible = false;
+            bullet.visible = true;
             bullet.load = true;
+            bullet.interactive = false;
+            bullet.x = 420;
+            bullet.y = 205;
+            bullet.rotation = 0.3;
+
+            parent = bullet.parent;
+            bullet_index = parent.children.findIndex(element => element == bullet);
+            [parent.children[bullet_index-1], parent.children[bullet_index]] = [parent.children[bullet_index], parent.children[bullet_index-1]]; // swap
+
             bullet_load_count++;
             // add sound
             sound_effects["single_round_loading"].play();
@@ -382,10 +395,12 @@ function gacha(delta){
         muzzle_flush_open_time++;
     }
 
-
     for(var i = 0; i < shells.length; i++){
         if(gacha_global_time > 20 * i){
             if(!shells[i].visible){ // new round fired
+                shells[i].visible = true;
+                shell_velocity[i] = [-8, -5];
+
                 sound_effects["firing"].play();
 
                 // make bolt open
@@ -396,14 +411,14 @@ function gacha(delta){
                 muzzle_flush.visible = true;
                 muzzle_flush_open_time = 0;
             }
-            shells[i].visible = true;
+            
+            // update the location of shells
+            shells[i].x += shell_velocity[i][0];
+            shells[i].y += shell_velocity[i][1];
 
-            switch(gacha_result[i]){
-                case 0: shells[i].x -= 30; break;
-                case 1: shells[i].x -= 20; break;
-                case 2: shells[i].x -= 10; break;
-            }
-            shells[i].y = 380 - 0.67 * shells[i].x + 0.0005 * Math.pow(shells[i].x, 2);
+            // gravity
+            shell_velocity[i][1] += gravitational_acceleration;
+
             shells[i].rotation -= 0.1;
         }
     }
