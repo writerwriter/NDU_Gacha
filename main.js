@@ -93,12 +93,29 @@ class Game {
     shells_push(value) {
         this.shells.push(value);
     }
+}
 
-    shell_velocity_push(value) {
-        this.shell_velocity.push(value);
+class Timer{
+    constructor(){
+        this.global_timer = 0;
     }
 }
 
+class RainbowlifyTimer extends Timer{
+    constructor(){
+        super();
+        this.next_rainbow_time = 1;
+        this.DELAY_BETWEEN_RAINBOWLIFY = 30;
+        this.speed = 1.0;
+    }
+    do_next_rainbow(){
+        if(this.global_timer == this.next_rainbow_time){
+            this.next_rainbow_time += this.DELAY_BETWEEN_RAINBOWLIFY;
+            return true;
+        }
+        return false;
+    }
+}
 
 var game = new Game(app.loader);
 //var loader = app.loader;
@@ -138,6 +155,7 @@ const sound_effects = {
     "python": PIXI.sound.Sound.from("./src/sound/python_sound.mp3"),
     "bolt_forward": PIXI.sound.Sound.from("./src/sound/bolt_forward.mp3"),
     "put_meg_in": PIXI.sound.Sound.from("./src/sound/put_meg_in.mp3"),
+    "shell_drop": PIXI.sound.Sound.from("./src/sound/shell_drop.mp3"),
 }
 
 game.loader
@@ -153,6 +171,7 @@ app.ticker_gameLoop = function(delta){
 }
 
 let state, gacha_global_time = 0, gacha_result = [0, 1, 2, 2, 1, 2, 0 ,0 ,1 ,2]; // TODO: post gpu4.miplab.org:8999
+let rainbowlify_timer = new RainbowlifyTimer();
 let muzzle_flush_open_time = 0;         // TODO: move this in the object
 let gravitational_acceleration = 0.9;   // TODO: turn this into constant
 
@@ -272,6 +291,12 @@ function scene_1(){
     trigger_hitbox.alpha = 0;
     game.scenes.gacha_single.trigger_hitbox = trigger_hitbox;
 
+    target = new PIXI.Sprite(game.loader.resources['./src/img/target.jpg'].texture);
+    target.x = 300;
+    target.y = 300;
+    target.visible = false;
+    game.scenes.gacha_single.target = target;
+
     game.scenes.gacha_single.handle.addChild(game.scenes.gacha_single.rifle);
     game.scenes.gacha_single.handle.addChild(game.scenes.gacha_single.bolt_hitbox);
     game.scenes.gacha_single.handle.addChild(game.scenes.gacha_single.trigger_hitbox);
@@ -280,6 +305,7 @@ function scene_1(){
     game.scenes.gacha_single.handle.addChild(game.scenes.gacha_single.rifle_no_bolt);
     game.scenes.gacha_single.handle.addChild(game.scenes.gacha_single.bullet);
     game.scenes.gacha_single.handle.addChild(game.scenes.gacha_single.muzzle_flush);
+    game.scenes.gacha_single.handle.addChild(game.scenes.gacha_single.target);
     game.scenes.gacha_single.handle.visible = false;
 
     app.stage.addChild(game.scenes.gacha_single.handle);
@@ -397,14 +423,22 @@ function shells_generation(gacha_rewards=[]){
     for(var i = 0; i < gacha_rewards.length; i++){
         var shell;
         switch(gacha_rewards[i]){
-            case 0:
+            case 0: // gold
                 shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_gold.svg'].texture);
+                shell.is_actually_rainbow = false;
                 break;
-            case 1:
+            case 1: // silver
                 shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_silver.svg'].texture);
+                shell.is_actually_rainbow = false;
                 break;
-            case 2:
-                shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_rainbow.svg'].texture);
+            case 2: // rainbow
+                if(Math.random() > 0.5)
+                    shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_silver.svg'].texture);
+                else
+                    shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_gold.svg'].texture);
+                shell.is_actually_rainbow = true;
+                shell.turned = false;
+                console.log(i);
                 break;
         }
         shell.scale.set(0.05, 0.05);
@@ -415,9 +449,10 @@ function shells_generation(gacha_rewards=[]){
         shell.goal_x = 100 + 60 * i;
         shell.goal_y = 500;
         shell.visible = false;
+        shell.velocity = [0, 0];
+
         app.stage.addChild(shell);
         game.shells_push(shell);
-        game.shell_velocity_push([0, 0]);
     }
 }
 
@@ -579,16 +614,79 @@ function play_ten(delta){
     }
 }
 
+function rainbowlify(delta){ // 2434
+    rainbowlify_timer.global_timer++;
+
+    x_bound = [-10, 900];
+    slow_motion = false;
+
+    for(var i = 0; i < game.shells.length; i++){
+        if(game.shells[i].is_actually_rainbow && !game.shells[i].turned && rainbowlify_timer.do_next_rainbow()){
+            game.shells[i].turned = true;
+            game.shells[i].turn_finished = false;
+
+            game.shells[i].velocity = [-30., 0];
+            x_distance = 2 * (x_bound[1] - x_bound[0]);
+            air_time = x_distance / Math.abs(game.shells[i].velocity[0]);
+            game.shells[i].velocity[1] = -air_time * 0.5 * gravitational_acceleration;
+            game.shells[i].rotation_speed = -(3.1415926*2 / air_time);
+            game.shells[i].original_rotation = game.shells[i].rotation;
+
+            break;
+        }else if(game.shells[i].turned && !game.shells[i].turn_finished){
+            // update the location of shells
+            game.shells[i].x += rainbowlify_timer.speed * game.shells[i].velocity[0];
+            game.shells[i].y += rainbowlify_timer.speed * game.shells[i].velocity[1];
+
+            // bounce
+            if(game.shells[i].x < x_bound[0]){
+                game.shells[i].x = 2 * x_bound[0] - game.shells[i].x;
+                game.shells[i].velocity[0] *= -1;
+            }
+            if(game.shells[i].x > x_bound[1]){
+                game.shells[i].x = 2 * x_bound[1] - game.shells[i].x;
+                game.shells[i].velocity[0] *= -1;
+            }
+
+            // roughly the center
+            if(Math.abs(game.shells[i].x - (x_bound[0] + x_bound[1]) / 2) < 50 && game.shells[i].velocity[1] < 0){
+                slow_motion = true;
+                game.shells[i].texture = game.loader.resources['./src/img/bullet_rainbow.svg'].texture;
+            }
+
+            // reset position
+            if(game.shells[i].y > game.shells[i].goal_y + 10 && game.shells[i].velocity[1] > 0){
+                game.shells[i].x = game.shells[i].goal_x;
+                game.shells[i].y = game.shells[i].goal_y;
+                game.shells[i].rotation = game.shells[i].original_rotation;
+                game.shells[i].turn_finished = true;
+            }
+
+            // gravity
+            game.shells[i].velocity[1] += rainbowlify_timer.speed * gravitational_acceleration;
+
+            game.shells[i].rotation -= rainbowlify_timer.speed * game.shells[i].rotation_speed;
+        }
+    }
+
+    if(slow_motion)
+        rainbowlify_timer.speed = 0.1;
+    else
+        rainbowlify_timer.speed = 1;
+}
+
 function gacha(delta){
     gacha_global_time++;
 
     if(game.state == 'gacha_single'){
         var bolt = game.scenes.gacha_single.bolt;
         var muzzle_flush = game.scenes.gacha_single.muzzle_flush;
+        var target = game.scenes.gacha_single.target;
     }
     else if(game.state == 'gacha_ten'){
         var bolt = game.scenes.gacha_ten.bolt;
         var muzzle_flush = game.scenes.gacha_ten.muzzle_flush;
+        var target = game.scenes.gacha_ten.target;
     }
 
     // handle bolt
@@ -609,14 +707,15 @@ function gacha(delta){
     for(var i = 0; i < game.shells.length; i++){
         if(gacha_global_time > 20 * i){
             if(!game.shells[i].visible){ // new round fired
+                game.shells[i].droped = false;
                 game.shells[i].visible = true;
-                game.shell_velocity[i] = [-8, -5];
+                game.shells[i].velocity = [-8, -5];
 
-                v0 = game.shell_velocity[i][1];
+                v0 = game.shells[i].velocity[1];
                 y_distance = game.shells[i].goal_y - game.shells[i].y;
                 total_time = ((-4.0 * v0) + Math.pow((4.0 * v0 * v0 + 8.0 * gravitational_acceleration * y_distance), 0.5)) / (2.0 * gravitational_acceleration); // t = ( -4v0 + (4v0^2 + 8gs)^0.5 ) / 2g
 
-                game.shell_velocity[i][0] = (game.shells[i].goal_x - game.shells[i].x) / total_time;
+                game.shells[i].velocity[0] = (game.shells[i].goal_x - game.shells[i].x) / total_time;
 
                 sound_effects["firing"].play();
 
@@ -633,24 +732,31 @@ function gacha(delta){
             }
 
             if(gacha_global_time > 20 * i + total_time - 4){
+                if(game.shells[i].droped == false)
+                    sound_effects["shell_drop"].play();
+                game.shells[i].droped = true;
                 game.shells[i].x = game.shells[i].goal_x;
                 game.shells[i].y = game.shells[i].goal_y;
 
                 game.shells[i].rotation -= 0.3 * Math.max(((20 * (i+1) + total_time + 10) - gacha_global_time) / 20, 0); // slowly stop turning
+
+                game.shells[i].velocity = [0, 0];
             }
             else{
                 // update the location of shells
-                game.shells[i].x += game.shell_velocity[i][0];
-                game.shells[i].y += game.shell_velocity[i][1];
+                game.shells[i].x += game.shells[i].velocity[0];
+                game.shells[i].y += game.shells[i].velocity[1];
 
                 // gravity
-                game.shell_velocity[i][1] += gravitational_acceleration;
+                game.shells[i].velocity[1] += gravitational_acceleration;
 
                 game.shells[i].rotation -= 0.15;
             }
         }
     }
-    if(gacha_global_time > 500){
+    if(gacha_global_time > 300){
+        state = rainbowlify;
+        /*
         for(i=0; i<game.shells.length; i++){
             game.shells[i].visible = false;
         }
@@ -664,7 +770,7 @@ function gacha(delta){
         gacha_global_time = 0;
         gacha_result = [0, 1, 2, 2, 1, 2, 0 ,0 ,1 ,2];
         muzzle_flush.open_time = 0;
-        game.loader.load(start);        
+        game.loader.load(start);*/
     }
 }
 
