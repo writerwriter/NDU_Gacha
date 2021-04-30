@@ -9,6 +9,10 @@ const app = new PIXI.Application({
 const b = new Bump(PIXI);
 document.body.appendChild(app.view);
 
+const api_gacha = axios.create({
+    baseURL: 'http://gpu4.miplab.org:8999',
+})
+
 class Game {
     constructor(loader) {
         this._loader = loader;
@@ -421,19 +425,34 @@ function onGachaBtnClick(event){
     sound_effects["python"].stop();
     game.scenes.start.handle.visible = false;
     app.ticker.remove(app.ticker_gameLoop, app);
-    app.ticker.add(app.ticker_gameLoop, app);
     switch(event.target.gacha_num){
-        case 1: 
-            game.loader.load(scene_1); 
-            game.scenes.gacha_single.handle.visible = true; 
-            state = play_single; 
-            game.state = 'gacha_single';
+        case 1:
+            api_gacha.post('/gacha_single')
+            .then(res => {
+                gacha_result = [res.data.result];
+                game.loader.load(scene_1); 
+                game.scenes.gacha_single.handle.visible = true;
+                state = play_single;
+                game.state = 'gacha_single';
+                app.ticker.add(app.ticker_gameLoop, app);
+            })
+            .catch(err => {
+                console.log(err);
+            })
             break;
         case 10: 
-            game.loader.load(scene_10); 
-            game.scenes.gacha_ten.handle.visible = true; 
-            state = play_ten; 
-            game.state = 'gacha_ten';
+            api_gacha.post('/gacha_ten')
+            .then(res => {
+                gacha_result = res.data.result;
+                game.loader.load(scene_10); 
+                game.scenes.gacha_ten.handle.visible = true; 
+                state = play_ten; 
+                game.state = 'gacha_ten';
+                app.ticker.add(app.ticker_gameLoop, app);
+            })
+            .catch(err => {
+                console.log(err);
+            })
             break;
     }
 }
