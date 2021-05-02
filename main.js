@@ -105,7 +105,7 @@ class RainbowlifyTimer extends Timer{
     constructor(){
         super();
         this.next_rainbow_time = 1;
-        this.DELAY_BETWEEN_RAINBOWLIFY = 30;
+        this.DELAY_BETWEEN_RAINBOWLIFY = 500;
         this.speed = 1.0;
     }
     do_next_rainbow(){
@@ -617,11 +617,16 @@ function play_ten(delta){
 function rainbowlify(delta){ // 2434
     rainbowlify_timer.global_timer++;
 
+    let rainbowlify_index = -1;
+
     x_bound = [-10, 900];
     slow_motion = false;
-
     for(var i = 0; i < game.shells.length; i++){
+        /*record previous position*/
+        game.shells[i].x_pre = game.shells[i].x;
+        game.shells[i].y_pre = game.shells[i].y;
         if(game.shells[i].is_actually_rainbow && !game.shells[i].turned && rainbowlify_timer.do_next_rainbow()){
+            rainbowlify_index = i;
             game.shells[i].turned = true;
             game.shells[i].turn_finished = false;
 
@@ -652,7 +657,22 @@ function rainbowlify(delta){ // 2434
             if(Math.abs(game.shells[i].x - (x_bound[0] + x_bound[1]) / 2) < 50 && game.shells[i].velocity[1] < 0){
                 slow_motion = true;
                 game.shells[i].texture = game.loader.resources['./src/img/bullet_rainbow.svg'].texture;
+                if(app.stage.scale.x < 3 && app.stage.scale.y < 3)
+                    zoom(game.shells[i], 1.1);
+                else
+                    zoom(game.shells[i], 1);
             }
+            else{
+                if(app.stage.scale.x > 1 && app.stage.scale.y > 1)
+                    zoom(game.shells[i], 0.9);
+                else
+                    zoom(game.shells[i], 1);
+            }
+
+            // gravity
+            game.shells[i].velocity[1] += rainbowlify_timer.speed * gravitational_acceleration;
+
+            game.shells[i].rotation -= rainbowlify_timer.speed * game.shells[i].rotation_speed;
 
             // reset position
             if(game.shells[i].y > game.shells[i].goal_y + 10 && game.shells[i].velocity[1] > 0){
@@ -660,19 +680,19 @@ function rainbowlify(delta){ // 2434
                 game.shells[i].y = game.shells[i].goal_y;
                 game.shells[i].rotation = game.shells[i].original_rotation;
                 game.shells[i].turn_finished = true;
+                app.stage.scale.set(1, 1);
+                app.stage.position.set(0, 0);
             }
-
-            // gravity
-            game.shells[i].velocity[1] += rainbowlify_timer.speed * gravitational_acceleration;
-
-            game.shells[i].rotation -= rainbowlify_timer.speed * game.shells[i].rotation_speed;
         }
     }
 
-    if(slow_motion)
-        rainbowlify_timer.speed = 0.1;
-    else
+    if(slow_motion){
+        rainbowlify_timer.speed = 0.01;
+    }
+    else{
         rainbowlify_timer.speed = 1;
+    }
+    //zoom(game.shells[10], 1.005);
 }
 
 function gacha(delta){
@@ -778,4 +798,19 @@ function onTriggerClick(event){
     shells_generation(gacha_result);
     trigger_hitbox.visible = false;
     state = gacha;
+}
+
+function zoom(shell, scale){
+    if(shell.x_pre && shell.y_pre){
+        app.stage.x -= app.stage.scale.x * (shell.x * scale - shell.x_pre);
+        app.stage.y -= app.stage.scale.y * (shell.y * scale - shell.y_pre);
+        //app.stage.x -= app.stage.scale.x * (shell.x - old_p[0]);
+        //app.stage.y -= app.stage.scale.y * (shell.y - old_p[1]);
+        //let tx = shell.x * (app.stage.scale.x * (scale-1));
+        //let ty = shell.y * (app.stage.scale.y * (scale-1));
+        //app.stage.x -= tx;
+        //app.stage.y -= ty;
+        app.stage.scale.x = scale * app.stage.scale.x;
+        app.stage.scale.y = scale * app.stage.scale.y;
+    }
 }
