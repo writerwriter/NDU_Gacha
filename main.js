@@ -654,17 +654,18 @@ function rainbowlify(delta){ // 2434
             }
 
             // roughly the center
-            if(Math.abs(game.shells[i].x - (x_bound[0] + x_bound[1]) / 2) < 50 && game.shells[i].velocity[1] < 0){
+            if(game.shells[i].velocity[0] > 0){
+            //if(Math.abs(game.shells[i].x - (x_bound[0] + x_bound[1]) / 2) < 50 && game.shells[i].velocity[1] < 0){
                 slow_motion = true;
                 game.shells[i].texture = game.loader.resources['./src/img/bullet_rainbow.svg'].texture;
                 if(app.stage.scale.x < 3 && app.stage.scale.y < 3)
-                    zoom(game.shells[i], 1.1);
+                    zoom(game.shells[i], 1.01);
                 else
                     zoom(game.shells[i], 1);
             }
             else{
                 if(app.stage.scale.x > 1 && app.stage.scale.y > 1)
-                    zoom(game.shells[i], 0.9);
+                    zoom(game.shells[i], 0.99);
                 else
                     zoom(game.shells[i], 1);
             }
@@ -687,10 +688,10 @@ function rainbowlify(delta){ // 2434
     }
 
     if(slow_motion){
-        rainbowlify_timer.speed = 0.01;
+        rainbowlify_timer.speed = 0.1;
     }
     else{
-        rainbowlify_timer.speed = 1;
+        rainbowlify_timer.speed = 0.2;
     }
     //zoom(game.shells[10], 1.005);
 }
