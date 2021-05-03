@@ -4,7 +4,7 @@ const app = new PIXI.Application({
     height: window.innerHeight,
     antialias: true,
     transparent: false,
-    backgroundColor: 0xffffff,
+    backgroundColor: 0x000000,
 });
 const b = new Bump(PIXI);
 document.body.appendChild(app.view);
@@ -13,7 +13,7 @@ const api_gacha = axios.create({
     baseURL: 'http://gpu4.miplab.org:8999',
 })
 
-class Game {
+class Game {        
     constructor(loader) {
         this._loader = loader;
         this._scenes = new Object();
@@ -105,8 +105,10 @@ class RainbowlifyTimer extends Timer{
     constructor(){
         super();
         this.next_rainbow_time = 1;
-        this.DELAY_BETWEEN_RAINBOWLIFY = 500;
+        this.DELAY_BETWEEN_RAINBOWLIFY = 700;
         this.speed = 1.0;
+        this.last_rainbowlify_idx = -1;
+        this.DELAY_TO_RAINBOWLIFY = 50;
     }
     do_next_rainbow(){
         if(this.global_timer == this.next_rainbow_time){
@@ -123,6 +125,7 @@ var game = new Game(app.loader);
 const resources_start = [
     "./src/img/gacha_single.png",
     "./src/img/gacha_ten.png",
+    "./src/img/flag.png"
 ]
 
 const resources_charging = [
@@ -176,6 +179,9 @@ let muzzle_flush_open_time = 0;         // TODO: move this in the object
 let gravitational_acceleration = 0.9;   // TODO: turn this into constant
 
 function start() {
+    let bg = new PIXI.Sprite(game.loader.resources['./src/img/flag.png'].texture);
+    bg.scale.set(window.innerWidth/bg.width, window.innerHeight/bg.height);
+    app.stage.addChild(bg);
     /*scene_start*/
     game.scenes.start.handle = new PIXI.Container();
     let gacha_popup = new PIXI.Graphics();
@@ -450,8 +456,9 @@ function shells_generation(gacha_rewards=[]){
         shell.goal_y = 500;
         shell.visible = false;
         shell.velocity = [0, 0];
-
-        app.stage.addChild(shell);
+        if(game.state == 'gacha_single') game.scenes.gacha_single.handle.addChild(shell);
+        else if(game.state == 'gacha_ten') game.scenes.gacha_ten.handle.addChild(shell);
+        //app.stage.addChild(shell);
         game.shells_push(shell);
     }
 }
@@ -615,9 +622,10 @@ function play_ten(delta){
 }
 
 function rainbowlify(delta){ // 2434
+    var container;
+    if(game.state == 'gacha_single') container = game.scenes.gacha_single.handle;
+    else if(game.state == 'gacha_ten') container = game.scenes.gacha_ten.handle;
     rainbowlify_timer.global_timer++;
-
-    let rainbowlify_index = -1;
 
     x_bound = [-10, 900];
     slow_motion = false;
@@ -627,12 +635,14 @@ function rainbowlify(delta){ // 2434
         /*record previous position*/
         shell.x_pre = shell.x;
         shell.y_pre = shell.y;
-        if(shell.is_actually_rainbow && !shell.turned && rainbowlify_timer.do_next_rainbow()){
-            rainbowlify_index = i;
+        if(shell.is_actually_rainbow && !shell.turned && (rainbowlify_timer.last_rainbowlify_idx == -1 || game.shells[rainbowlify_timer.last_rainbowlify_idx].turn_finished)){
+        //if(shell.is_actually_rainbow && !shell.turned && rainbowlify_timer.do_next_rainbow()){
+            rainbowlify_timer.last_rainbowlify_idx = i;
             shell.turned = true;
             shell.turn_finished = false;
+            shell.turned_time = rainbowlify_timer.global_timer;
 
-            shell.velocity = [-20., 0];
+            shell.velocity = [-28., 0];
             x_distance = 2 * (x_bound[1] - x_bound[0]);
             shell.air_time = x_distance / Math.abs(shell.velocity[0]);
             shell.velocity[1] = -shell.air_time * 0.5 * gravitational_acceleration;
@@ -642,7 +652,7 @@ function rainbowlify(delta){ // 2434
                                  0.5 * gravitational_acceleration * (0.5 * shell.air_time) * (0.5 * shell.air_time);
 
             break;
-        }else if(shell.turned && !shell.turn_finished){
+        }else if(shell.turned && !shell.turn_finished && rainbowlify_timer.global_timer > (shell.turned_time + rainbowlify_timer.DELAY_TO_RAINBOWLIFY)){
             // update the location of shells
             shell.x += rainbowlify_timer.speed * shell.velocity[0];
             shell.y += rainbowlify_timer.speed * shell.velocity[1];
@@ -656,22 +666,33 @@ function rainbowlify(delta){ // 2434
                 shell.x = 2 * x_bound[1] - shell.x;
                 shell.velocity[0] *= -1;
             }
-
-            // roughly the center
-            if(shell.y <= shell.highest_y + 5){
+            if(shell.velocity[0] > 0){
                 slow_motion = true;
-                shell.texture = game.loader.resources['./src/img/bullet_rainbow.svg'].texture;
-                if(app.stage.scale.x < 3 && app.stage.scale.y < 3)
+                let target = new Object;
+                target.x = 600; 
+                target.y = 300;
+                if(container.scale.x < 2 && container.scale.y < 2)
+                    zoom(container, shell, 1.05, target);
+                else
+                    zoom(container, shell, 1, target);
 
-                    zoom(shell, 1.1);
-                else
-                    zoom(shell, 1);
+                if(shell.x > 200){
+                //slow_motion = true;
+                    shell.texture = game.loader.resources['./src/img/bullet_rainbow.svg'].texture;
+                }
             }
-            else{
-                if(app.stage.scale.x > 1 && app.stage.scale.y > 1)
-                    zoom(shell, 0.9);
+            // roughly the center
+            //if(shell.y <= shell.highest_y + 5){
+            if(shell.texture == game.loader.resources['./src/img/bullet_rainbow.svg'].texture && shell.velocity[0] < 0){
+                let target = new Object;
+                //target.x = shell.x * container.scale.x + container.x;
+                //target.y = shell.y * container.scale.y + container.y;
+                target.x = shell.goal_x;
+                target.y = shell.goal_y;
+                if(container.scale.x > 1 && container.scale.y > 1)
+                    zoom_out(container, 0.95);
                 else
-                    zoom(shell, 1);
+                    zoom_out(container, 1/container.scale.x);
             }
 
             // gravity
@@ -685,19 +706,18 @@ function rainbowlify(delta){ // 2434
                 shell.y = shell.goal_y;
                 shell.rotation = shell.original_rotation;
                 shell.turn_finished = true;
-                app.stage.scale.set(1, 1);
-                app.stage.position.set(0, 0);
+                container.scale.set(1, 1);
+                container.position.set(0, 0);
             }
         }
     }
 
     if(slow_motion){
-        rainbowlify_timer.speed = 0.05;
+        rainbowlify_timer.speed = 0.1;
     }
     else{
-        rainbowlify_timer.speed = 0.2;
+        rainbowlify_timer.speed = 1.0;
     }
-    //zoom(game.shells[10], 1.005);
 }
 
 function gacha(delta){
@@ -804,17 +824,32 @@ function onTriggerClick(event){
     state = gacha;
 }
 
-function zoom(shell, scale){
+function zoom(container, shell, scale, target){
     if(shell.x_pre && shell.y_pre){
-        app.stage.x -= app.stage.scale.x * (shell.x * scale - shell.x_pre);
-        app.stage.y -= app.stage.scale.y * (shell.y * scale - shell.y_pre);
-        //app.stage.x -= app.stage.scale.x * (shell.x - old_p[0]);
-        //app.stage.y -= app.stage.scale.y * (shell.y - old_p[1]);
-        //let tx = shell.x * (app.stage.scale.x * (scale-1));
-        //let ty = shell.y * (app.stage.scale.y * (scale-1));
-        //app.stage.x -= tx;
-        //app.stage.y -= ty;
-        app.stage.scale.x = scale * app.stage.scale.x;
-        app.stage.scale.y = scale * app.stage.scale.y;
+        container.x -= container.scale.x * (shell.x * scale - shell.x_pre);
+        container.y -= container.scale.y * (shell.y * scale - shell.y_pre);
+        //container.x -= container.scale.x * (shell.x - old_p[0]);
+        //container.y -= container.scale.y * (shell.y - old_p[1]);
+        //let tx = shell.x * (container.scale.x * (scale-1));
+        //let ty = shell.y * (container.scale.y * (scale-1));
+        //container.x -= tx;
+        //container.y -= ty;
+        if(scale != 1){
+            container.x += (target.x - (container.x + shell.x * container.scale.x)) * (scale - 1);
+            container.y += (target.y - (container.y + shell.y * container.scale.y)) * (scale - 1);
+        }
+        else{
+            container.x += (target.x - (container.x + shell.x * container.scale.x)) * 0.1;
+            container.y += (target.y - (container.y + shell.y * container.scale.y)) * 0.1;
+        }
+        container.scale.x = scale * container.scale.x;
+        container.scale.y = scale * container.scale.y;
     }
+}
+
+function zoom_out(container, scale){
+    container.x -= container.x * scale;
+    container.y -= container.y * scale;
+    container.scale.x = scale * container.scale.x;
+    container.scale.y = scale * container.scale.y;
 }
