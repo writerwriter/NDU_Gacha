@@ -622,65 +622,69 @@ function rainbowlify(delta){ // 2434
     x_bound = [-10, 900];
     slow_motion = false;
     for(var i = 0; i < game.shells.length; i++){
-        /*record previous position*/
-        game.shells[i].x_pre = game.shells[i].x;
-        game.shells[i].y_pre = game.shells[i].y;
-        if(game.shells[i].is_actually_rainbow && !game.shells[i].turned && rainbowlify_timer.do_next_rainbow()){
-            rainbowlify_index = i;
-            game.shells[i].turned = true;
-            game.shells[i].turn_finished = false;
+        shell = game.shells[i];
 
-            game.shells[i].velocity = [-30., 0];
+        /*record previous position*/
+        shell.x_pre = shell.x;
+        shell.y_pre = shell.y;
+        if(shell.is_actually_rainbow && !shell.turned && rainbowlify_timer.do_next_rainbow()){
+            rainbowlify_index = i;
+            shell.turned = true;
+            shell.turn_finished = false;
+
+            shell.velocity = [-20., 0];
             x_distance = 2 * (x_bound[1] - x_bound[0]);
-            air_time = x_distance / Math.abs(game.shells[i].velocity[0]);
-            game.shells[i].velocity[1] = -air_time * 0.5 * gravitational_acceleration;
-            game.shells[i].rotation_speed = -(3.1415926*2 / air_time);
-            game.shells[i].original_rotation = game.shells[i].rotation;
+            shell.air_time = x_distance / Math.abs(shell.velocity[0]);
+            shell.velocity[1] = -shell.air_time * 0.5 * gravitational_acceleration;
+            shell.rotation_speed = -(3.1415926*2 / shell.air_time);
+            shell.original_rotation = shell.rotation;
+            shell.highest_y = shell.y + shell.velocity[1] * (0.5 * shell.air_time) +
+                                 0.5 * gravitational_acceleration * (0.5 * shell.air_time) * (0.5 * shell.air_time);
 
             break;
-        }else if(game.shells[i].turned && !game.shells[i].turn_finished){
+        }else if(shell.turned && !shell.turn_finished){
             // update the location of shells
-            game.shells[i].x += rainbowlify_timer.speed * game.shells[i].velocity[0];
-            game.shells[i].y += rainbowlify_timer.speed * game.shells[i].velocity[1];
+            shell.x += rainbowlify_timer.speed * shell.velocity[0];
+            shell.y += rainbowlify_timer.speed * shell.velocity[1];
 
             // bounce
-            if(game.shells[i].x < x_bound[0]){
-                game.shells[i].x = 2 * x_bound[0] - game.shells[i].x;
-                game.shells[i].velocity[0] *= -1;
+            if(shell.x < x_bound[0]){
+                shell.x = 2 * x_bound[0] - shell.x;
+                shell.velocity[0] *= -1;
             }
-            if(game.shells[i].x > x_bound[1]){
-                game.shells[i].x = 2 * x_bound[1] - game.shells[i].x;
-                game.shells[i].velocity[0] *= -1;
+            if(shell.x > x_bound[1]){
+                shell.x = 2 * x_bound[1] - shell.x;
+                shell.velocity[0] *= -1;
             }
 
             // roughly the center
-            if(game.shells[i].velocity[0] > 0){
-            //if(Math.abs(game.shells[i].x - (x_bound[0] + x_bound[1]) / 2) < 50 && game.shells[i].velocity[1] < 0){
+            if(shell.y <= shell.highest_y + 5){
                 slow_motion = true;
-                game.shells[i].texture = game.loader.resources['./src/img/bullet_rainbow.svg'].texture;
+                shell.texture = game.loader.resources['./src/img/bullet_rainbow.svg'].texture;
                 if(app.stage.scale.x < 3 && app.stage.scale.y < 3)
-                    zoom(game.shells[i], 1.01);
+
+                    zoom(shell, 1.1);
                 else
-                    zoom(game.shells[i], 1);
+                    zoom(shell, 1);
             }
             else{
                 if(app.stage.scale.x > 1 && app.stage.scale.y > 1)
-                    zoom(game.shells[i], 0.99);
+                    zoom(shell, 0.9);
                 else
-                    zoom(game.shells[i], 1);
+                    zoom(shell, 1);
             }
 
             // gravity
-            game.shells[i].velocity[1] += rainbowlify_timer.speed * gravitational_acceleration;
+            shell.velocity[1] += rainbowlify_timer.speed * gravitational_acceleration;
 
-            game.shells[i].rotation -= rainbowlify_timer.speed * game.shells[i].rotation_speed;
+            shell.rotation -= rainbowlify_timer.speed * shell.rotation_speed;
 
             // reset position
-            if(game.shells[i].y > game.shells[i].goal_y + 10 && game.shells[i].velocity[1] > 0){
-                game.shells[i].x = game.shells[i].goal_x;
-                game.shells[i].y = game.shells[i].goal_y;
-                game.shells[i].rotation = game.shells[i].original_rotation;
-                game.shells[i].turn_finished = true;
+            if(shell.y > shell.goal_y + 10 && shell.velocity[1] > 0){
+                shell.x = shell.goal_x;
+                shell.y = shell.goal_y;
+                shell.rotation = shell.original_rotation;
+                shell.turn_finished = true;
                 app.stage.scale.set(1, 1);
                 app.stage.position.set(0, 0);
             }
@@ -688,7 +692,7 @@ function rainbowlify(delta){ // 2434
     }
 
     if(slow_motion){
-        rainbowlify_timer.speed = 0.1;
+        rainbowlify_timer.speed = 0.05;
     }
     else{
         rainbowlify_timer.speed = 0.2;
@@ -724,7 +728,6 @@ function gacha(delta){
         muzzle_flush.open_time++;
     }
 
-    // TODO: turn 2434
     for(var i = 0; i < game.shells.length; i++){
         if(gacha_global_time > 20 * i){
             if(!game.shells[i].visible){ // new round fired
@@ -775,7 +778,7 @@ function gacha(delta){
             }
         }
     }
-    if(gacha_global_time > 300){
+    if(gacha_global_time > (game.shells.length+3) * 20){
         state = rainbowlify;
         /*
         for(i=0; i<game.shells.length; i++){
