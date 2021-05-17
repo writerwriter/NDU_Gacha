@@ -529,16 +529,19 @@ function shells_generation(gacha_rewards=[]){
         shell.anchor.set(0.5);
         shell.x = 412.5;
         shell.y = 187.5;
-
-        shell.goal_x = 100 + 60 * i;
         shell.goal_y = 500;
+
         shell.visible = false;
         shell.velocity = [0, 0];
         if(game.state == 'gacha_single') {
+            shell.goal_x = 300;
+
             if(gacha_rewards[i]==2) game.scenes.gacha_single.handle.addChild(shell.rainbow_bg);
             game.scenes.gacha_single.handle.addChild(shell);
         }
         else if(game.state == 'gacha_ten') {
+            shell.goal_x = 100 + 60 * i;
+
             if(gacha_rewards[i]==2) game.scenes.gacha_ten.handle.addChild(shell.rainbow_bg);
             game.scenes.gacha_ten.handle.addChild(shell);
         }
@@ -919,7 +922,7 @@ function load_end_game_resources(){
     game.scenes.end_game.handle.addChild(億);
     
     game.scenes.end_game.rank_sprites = [];
-    if((game.shells.length == 11 && game.score > 2e9) || (game.shells.length == 1 && game.score == 3e9)){
+    if((game.shells.length == 11 && game.score > 23e8) || (game.shells.length == 1 && game.score == 3e9)){
         let S1 = new PIXI.Sprite(game.loader.resources['./src/img/S.png'].texture);
         let S2 = new PIXI.Sprite(game.loader.resources['./src/img/S.png'].texture);
         let R = new PIXI.Sprite(game.loader.resources['./src/img/R.png'].texture);
@@ -1096,8 +1099,10 @@ function gacha(delta){
                     bolt.force_open = true;
 
                     // make the mag behind everything
-                    game.scenes.gacha_ten.handle.removeChild(game.scenes.gacha_ten.mag);
-                    game.scenes.gacha_ten.handle.addChildAt(game.scenes.gacha_ten.mag, game.scenes.gacha_ten.handle.length);
+                    if(game.state == 'gacha_ten'){
+                        game.scenes.gacha_ten.handle.removeChild(game.scenes.gacha_ten.mag);
+                        game.scenes.gacha_ten.handle.addChildAt(game.scenes.gacha_ten.mag, game.scenes.gacha_ten.handle.length);
+                    }
                 }
             }
 
