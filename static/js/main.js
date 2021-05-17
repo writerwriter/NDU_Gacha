@@ -231,6 +231,12 @@ const sound_effects = {
     "shell_drop": PIXI.sound.Sound.from("./src/sound/shell_drop.mp3"),
     "2434": PIXI.sound.Sound.from("./src/sound/2434.mp3"),
     "heart_sound": PIXI.sound.Sound.from("./src/sound/heart_sound.mp3"),
+    "item_fall": PIXI.sound.Sound.from("./src/sound/item_fall.mp3"),
+    "failed_rainbow": PIXI.sound.Sound.from({
+        url: "./src/sound/failed_rainbow.mp3",
+        speed: 0.8
+    }),
+    "sugoi": PIXI.sound.Sound.from("./src/sound/sugoi.mp3"),
 }
 
 game.loader
@@ -250,7 +256,7 @@ let state, gacha_global_time = 0, gacha_result = [0, 1, 2, 2, 1, 2, 0 ,0 ,1 ,2];
 let rainbowlify_timer = new RainbowlifyTimer();
 let rank_timer = new RankTimer();
 let muzzle_flush_open_time = 0;         // TODO: move this in the object
-let gravitational_acceleration = 0.9;   // TODO: turn this into constant
+let gravitational_acceleration = 0.8;   // TODO: turn this into constant
 
 function start() {
     let bg = new PIXI.Sprite(game.loader.resources['./src/img/bg.png'].texture);
@@ -496,12 +502,12 @@ function shells_generation(gacha_rewards=[]){
             case 0: // gold
                 shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_gold.svg'].texture);
                 shell.is_actually_rainbow = false;
-                shell.need_jump = Math.random() > 0.7 ? true : false; //fake
+                shell.need_jump = Math.random() > 0.9 ? true : false; //fake
                 break;
             case 1: // silver
                 shell = new PIXI.Sprite(game.loader.resources['./src/img/bullet_silver.svg'].texture);
                 shell.is_actually_rainbow = false;
-                shell.need_jump = Math.random() > 0.7 ? true : false;
+                shell.need_jump = Math.random() > 0.9 ? true : false;
                 break;
             case 2: // rainbow
                 if(Math.random() > 0.5)
@@ -778,6 +784,8 @@ function rainbowlify(delta){ // 2434
                         app.stage.addChild(shell.flash);
                         if(j < 2)
                             sound_effects["heart_sound"].play();
+                        else if(!shell.is_actually_rainbow)
+                            sound_effects["failed_rainbow"].play();
                     }
                     if(shell.x > flash_start_pos + j * rainbowlify_timer.DELAY_BETWEEN_FLASH + rainbowlify_timer.flash_time && shell.x < flash_start_pos + (j+1) * rainbowlify_timer.DELAY_BETWEEN_FLASH){
                         app.stage.removeChild(shell.flash);
@@ -957,6 +965,8 @@ function end_game(delta){
     let scale_ratio = 0.7;
     for(let i = 0; i < game.scenes.end_game.score_sprites.length; i++){
         if(rank_timer.global_timer >= i * rank_timer.DELAY_BETWEEN_SCORE_WORD){
+            if(game.scenes.end_game.score_sprites[i].visible == false) // first appear play sound
+                sound_effects["item_fall"].play();
             game.scenes.end_game.score_sprites[i].visible = true;
             let scale_x = game.scenes.end_game.score_sprites[i].scale.x;
             let scale_y = game.scenes.end_game.score_sprites[i].scale.y;
@@ -972,6 +982,9 @@ function end_game(delta){
     if(rank_timer.global_timer >= finish_timer){
         for(let i = 0; i < game.scenes.end_game.rank_sprites.length; i++){
             if(rank_timer.global_timer - finish_timer >= i * rank_timer.DELAY_BETWEEN_RANK_WORD){
+                if(game.scenes.end_game.rank_sprites[i].visible == false) // first appear play sound
+                    sound_effects["item_fall"].play();
+
                 game.scenes.end_game.rank_sprites[i].visible = true;
                 let scale_x = game.scenes.end_game.rank_sprites[i].scale.x;
                 let scale_y = game.scenes.end_game.rank_sprites[i].scale.y;
@@ -988,6 +1001,12 @@ function end_game(delta){
     if(rank_timer.global_timer > finish_timer && game.scenes.end_game.sugoi){
         for(let i = 0; i < game.scenes.end_game.sugoi.length; i++){
             if(rank_timer.global_timer - finish_timer >= i * rank_timer.DELAY_BETWEEN_SUGOI){
+                if(game.scenes.end_game.sugoi[i].visible == false){ // first appear play sound
+                    sound_effects["item_fall"].play();
+                    if(i == 0)
+                        sound_effects["sugoi"].play();
+                }
+
                 game.scenes.end_game.sugoi[i].visible = true;
                 let scale_x = game.scenes.end_game.sugoi[i].scale.x;
                 let scale_y = game.scenes.end_game.sugoi[i].scale.y;
@@ -1003,6 +1022,8 @@ function end_game(delta){
         finish_timer += game.scenes.end_game.sugoi.length * rank_timer.DELAY_BETWEEN_SUGOI;
     }
     if(rank_timer.global_timer > finish_timer){
+        if(game.scenes.end_game.back_btn.visible == false)
+            sound_effects["item_fall"].play();
         game.scenes.end_game.back_btn.visible = true;
     }
     for(let i = 0; i < game.shells.length; i++){
@@ -1044,7 +1065,7 @@ function gacha(delta){
     }
 
     for(var i = 0; i < game.shells.length; i++){
-        if(gacha_global_time > 20 * i){
+        if(gacha_global_time > 50 * i){
             if(!game.shells[i].visible){ // new round fired
                 game.shells[i].droped = false;
                 game.shells[i].visible = true;
@@ -1066,18 +1087,23 @@ function gacha(delta){
                 muzzle_flush.visible = true;
                 muzzle_flush.open_time = 0;
 
-                if(i == game.shells.length - 1)
+                if(i == game.shells.length - 1){
                     bolt.force_open = true;
+
+                    // make the mag behind everything
+                    game.scenes.gacha_ten.handle.removeChild(game.scenes.gacha_ten.mag);
+                    game.scenes.gacha_ten.handle.addChildAt(game.scenes.gacha_ten.mag, game.scenes.gacha_ten.handle.length);
+                }
             }
 
-            if(gacha_global_time > 20 * i + total_time - 4){
+            if(gacha_global_time > 50 * i + total_time - 4){
                 if(game.shells[i].droped == false)
                     sound_effects["shell_drop"].play();
                 game.shells[i].droped = true;
                 game.shells[i].x = game.shells[i].goal_x;
                 game.shells[i].y = game.shells[i].goal_y;
 
-                game.shells[i].rotation -= 0.3 * Math.max(((20 * (i+1) + total_time + 10) - gacha_global_time) / 20, 0); // slowly stop turning
+                game.shells[i].rotation -= 0.2 * Math.max(((50 * (i+1) + total_time + 10) - gacha_global_time) / 50, 0); // slowly stop turning
 
                 game.shells[i].velocity = [0, 0];
             }
@@ -1093,7 +1119,7 @@ function gacha(delta){
             }
         }
     }
-    if(gacha_global_time > (game.shells.length+3) * 20){
+    if(gacha_global_time > (game.shells.length+2) * 50){
         state = rainbowlify;
     }
 }
