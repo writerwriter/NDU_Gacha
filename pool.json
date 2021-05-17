@@ -5,7 +5,7 @@
         "rainbow": 0.05
     },
     "remain":{
-        "silver": 10,
-        "rainbow": 100
+        "silver": 250,
+        "rainbow": 40
     }
 }

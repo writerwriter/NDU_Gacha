@@ -8,6 +8,11 @@ app = Flask(__name__,
             static_folder='static')
 CORS(app, support_credentials=True)
 
+db = TinyDB('pool.json')
+
+def gacha():
+    pass
+
 @app.route("/gacha_single/", methods=['POST'])
 def gacha_single():
     return {
