@@ -1,0 +1,11 @@
+{
+    "chance":{
+        "gold": 0.65,
+        "silver": 0.30,
+        "rainbow": 0.05
+    },
+    "remain":{
+        "silver": 10,
+        "rainbow": 100
+    }
+}
