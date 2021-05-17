@@ -766,8 +766,11 @@ function rainbowlify(delta){ // 2434
                 target.y = 300;
                 if(container.scale.x < 2 && container.scale.y < 2)
                     zoom(container, shell, 1.05, target);
-                else
+                else{
                     zoom(container, shell, 1, target);
+                    container.final_x = container.x;
+                    container.final_y = container.y;
+                }
 
                 /*TODO: do three position flashing*/
                 let flash_start_pos = 100;
@@ -813,15 +816,17 @@ function rainbowlify(delta){ // 2434
             // roughly the center
             //if(shell.y <= shell.highest_y + 5){
             if(shell.velocity[1] > 0 && shell.velocity[0] < 0){
-                let target = new Object;
-                //target.x = shell.x * container.scale.x + container.x;
-                //target.y = shell.y * container.scale.y + container.y;
-                target.x = shell.goal_x;
-                target.y = shell.goal_y;
                 if(container.scale.x > 1 && container.scale.y > 1)
                     zoom_out(container, 0.95);
                 else
                     zoom_out(container, 1/container.scale.x);
+
+                if(Math.sign(container.final_x) * container.x > 0 && Math.sign(container.final_y) * container.y > 0)
+                    zoom_out_pos(container, -container.final_x/18.0, -container.final_y/18.0); // magic
+                else{
+                    container.x = container.y = 0;
+                }
+                
             }
 
             // gravity
@@ -1154,10 +1159,13 @@ function zoom(container, shell, scale, target){
 }
 
 function zoom_out(container, scale){
-    container.x -= container.x * scale;
-    container.y -= container.y * scale;
     container.scale.x = scale * container.scale.x;
     container.scale.y = scale * container.scale.y;
+}
+
+function zoom_out_pos(container, delta_x, delta_y){
+    container.x += delta_x;
+    container.y += delta_y;
 }
 
 function onBackBtnClick(event){

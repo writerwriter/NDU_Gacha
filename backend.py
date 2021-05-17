@@ -25,7 +25,7 @@ pool = {
 def snap49(results):
     score = sum([{0: 1, 1: 4, 2: 30}[r] for r in results])
 
-    if score in [46, 47, 48] or True:
+    if score in [46, 47, 48]:
         # undo gacha
         for r in results:
             pool['remain'][['gold', 'silver', 'rainbow'][r]] += 1
