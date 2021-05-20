@@ -17,8 +17,8 @@ pool = {
     },
     'remain':{
         'gold': 999999999,
-        'silver': 190,
-        'rainbow': 30
+        'silver': 250,
+        'rainbow': 40
     }
 }
 
@@ -46,7 +46,7 @@ def gacha():
 
     if pool['remain'][result] == 0: # invalid gacha
         return gacha()
-    
+
     pool['remain'][result] -= 1
     return ['gold', 'silver', 'rainbow'].index(result)
 
